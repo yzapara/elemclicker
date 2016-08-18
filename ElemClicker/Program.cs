@@ -108,7 +108,7 @@ namespace ElemClicker
       }
 
       results.Add(string.Format("Finished at {0} in {1} attempts", DateTime.Now, results.Count));
-      Console.WriteLine(string.Format("[{0}] Конец дуэлей", DateTime.Now));
+      Console.WriteLine(string.Format("[{0}] End of duels", DateTime.Now));
 
       string fileName = GetLogFileName("duel_", "txt", "Duels");
       File.WriteAllLines(fileName, results);
