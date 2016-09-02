@@ -15,6 +15,7 @@ namespace ElemClicker
       string login, pwd;
       double coeff;
       int timeoutMsec, numrRepeats, urfinCost;
+      bool changeCards;
       if (args.Length < 5)
       {
         //coeff = 1.03;
@@ -35,6 +36,7 @@ namespace ElemClicker
         numrRepeats = Convert.ToInt32(args[3]);
         timeoutMsec = Convert.ToInt32(args[4]);
         urfinCost = Convert.ToInt32(args[5]);
+        changeCards = Convert.ToBoolean(Convert.ToInt32(args[6]));
 
         if (!Directory.Exists(@"Logs"))
           Directory.CreateDirectory("Logs");
@@ -55,7 +57,7 @@ namespace ElemClicker
 
               RunDuels(driver, coeff);
 
-              RunUrfin(driver, false, urfinCost);
+              RunUrfin(driver, false, urfinCost, changeCards);
 
               //RunArenas(driver);
             }
@@ -99,14 +101,14 @@ namespace ElemClicker
           pref, DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond, end, subfolder);
     }
 
-    private static void RunUrfin(ChromeDriver driver, bool noCharge, int urfinCost=10)
+    private static void RunUrfin(ChromeDriver driver, bool noCharge, int urfinCost = 10, bool changeCards = false)
     {
       var results = new List<string>(0) { "Started urfin at " + DateTime.Now };
-      Console.WriteLine(string.Format("[{0}] Start urfin at", DateTime.Now));
+      Console.WriteLine(string.Format("[{0}] Start urfin", DateTime.Now));
 
       try
       {
-        var beatres = RunUrfinOnce(driver, noCharge, urfinCost);
+        var beatres = RunUrfinOnce(driver, noCharge, urfinCost, changeCards);
         if (beatres.Count == 0)
         {
           results.Add("No availible urfin");
@@ -118,15 +120,15 @@ namespace ElemClicker
       {
         Console.WriteLine(string.Format("[{0}]Exception: {1}", DateTime.Now, e.Message));
       }
-      
+
       results.Add(string.Format("Finished at {0}", DateTime.Now));
       Console.WriteLine(string.Format("[{0}] End of urfin", DateTime.Now));
 
-      string fileName = GetLogFileName("duel_", "txt", "Urfin");
+      string fileName = GetLogFileName("urfin_", "txt", "Urfin");
       File.WriteAllLines(fileName, results);
     }
 
-    private static List<string> RunUrfinOnce(ChromeDriver driver, bool noCharge, int startFrom = 10)
+    private static List<string> RunUrfinOnce(ChromeDriver driver, bool noCharge, int startFrom = 10, bool changeCards = true)
     {
       driver.Navigate().GoToUrl("http://elem.mobi/urfin/");
 
@@ -135,49 +137,60 @@ namespace ElemClicker
       try
       {
         #region Start battle
-        { 
+        {
           Thread.Sleep(200);
           var startDuelButton = driver.FindElementsByClassName("be");
           if (startDuelButton.Count > 0)
-            if (startDuelButton.First().Text == "Напасть")
+          {
+            if (startDuelButton.First().Text == "Далее")
             {
+              driver.GetScreenshot().SaveAsFile(GetLogFileName("result[before]_", "jpg", "Urfin"), ImageFormat.Jpeg);
               startDuelButton.First().Click();
-              Console.WriteLine(string.Format("[{0}] Duel result: {1}", DateTime.Now, "Start urfin for free"));
             }
-            else if (startDuelButton.First().Text.StartsWith("Напасть сразу за") && startFrom > 0)
-            {
-              result.Add(string.Format("{0}", "Urfin not ready for free now"));
-              var cost = Convert.ToInt32(startDuelButton.First().Text.Substring(17));
-              if (cost <= startFrom)
+            startDuelButton = driver.FindElementsByClassName("be");
+            if (startDuelButton.Count > 0)
+              if (startDuelButton.First().Text == "Напасть")
               {
-                result.Add(string.Format("[{0}] {1} {2}", DateTime.Now, "Urfin is ready for reasonable price", cost));
-                Console.WriteLine(string.Format("[{0}] {1} {2}", DateTime.Now, "Urfin is ready for reasonable price", cost));
+                driver.GetScreenshot().SaveAsFile(GetLogFileName("result[before]_", "jpg", "Urfin"), ImageFormat.Jpeg);
                 startDuelButton.First().Click();
-                var yesButton = driver.FindElementsByClassName("be");
-                if (yesButton.Count > 0)
-                  if (yesButton.First().Text == "Да!")
-                  {
-                    yesButton.First().Click();
-                  }
+                Console.WriteLine(string.Format("[{0}]: {1}", DateTime.Now, "Start urfin for free"));
+              }
+              else if (startDuelButton.First().Text.StartsWith("Напасть сразу за") && startFrom > 0)
+              {
+                result.Add(string.Format("{0}", "Urfin not ready for free now"));
+                var cost = Convert.ToInt32(startDuelButton.First().Text.Substring(17));
+                if (cost <= startFrom)
+                {
+                  result.Add(string.Format("[{0}] {1} {2}", DateTime.Now, "Urfin is ready for reasonable price", cost));
+                  Console.WriteLine(string.Format("[{0}] {1} {2}", DateTime.Now, "Urfin is ready for reasonable price", cost));
+                  startDuelButton.First().Click();
+                  var yesButton = driver.FindElementsByClassName("be");
+                  if (yesButton.Count > 0)
+                    if (yesButton.First().Text == "Да!")
+                    {
+                      driver.GetScreenshot().SaveAsFile(GetLogFileName("result[before]_", "jpg", "Urfin"), ImageFormat.Jpeg);
+                      yesButton.First().Click();
+                    }
+                }
+                else
+                {
+                  result.Add(string.Format("{0} {1}", "Urfin not ready for reasonable price and costs", cost));
+                  Console.WriteLine(string.Format("[{0}] {1}", DateTime.Now, "Urfin not ready for reasonable price"));
+                  return result;
+                }
+              }
+              else if (startDuelButton.First().Text.StartsWith("Обновить"))
+              {
+                result.Add(string.Format("{0}", "Urfin already started. Continue with the battle"));
+                Console.WriteLine(string.Format("[{0}] {1}", DateTime.Now, "Urfin already started. Continue with the battle"));
               }
               else
               {
-                result.Add(string.Format("{0}", "Urfin not ready for reasonable price"));
-                Console.WriteLine(string.Format("[{0}] {1}", DateTime.Now, "Urfin not ready for reasonable price"));
+                result.Add(string.Format("{0}", "Urfin not ready now"));
+                Console.WriteLine(string.Format("[{0}] {1}", DateTime.Now, "Urfin not ready now"));
                 return result;
               }
-            }
-            else if (startDuelButton.First().Text.StartsWith("Обновить"))
-            {
-              result.Add(string.Format("{0}", "Urfin already started. Continue with the battle"));
-              Console.WriteLine(string.Format("[{0}] {1}", DateTime.Now, "Urfin already started. Continue with the battle"));
-            }
-            else
-            {
-              result.Add(string.Format("{0}", "Urfin not ready now"));
-              Console.WriteLine(string.Format("[{0}] {1}", DateTime.Now, "Urfin not ready now"));
-              return result;
-            }
+          }
         }
         #endregion
 
@@ -205,7 +218,7 @@ namespace ElemClicker
                   Console.WriteLine(string.Format("[{0}] Urfin result: {1}", DateTime.Now, urfinResult.First().Text));
                 }
 
-                driver.GetScreenshot().SaveAsFile(GetLogFileName("result[1]_", "jpg", "Urfin"), ImageFormat.Jpeg);
+                driver.GetScreenshot().SaveAsFile(GetLogFileName("result[after]_", "jpg", "Urfin"), ImageFormat.Jpeg);
                 firstButton.First().Click();
 
               }
@@ -226,6 +239,8 @@ namespace ElemClicker
           var dmgMult = new List<double>(3);
 
           var attackEffect = new List<double>(3) { 0.0, 0.0, 0.0 };
+          var damageEffect = new List<double>(3) { 0.0, 0.0, 0.0 };
+          bool superAttack = false;
 
           for (int i = 0; i < 3; i++)
           {
@@ -237,35 +252,106 @@ namespace ElemClicker
               case "1.5": { dmgMult.Add(1.5); break; }
               case "10":
                 {
-                  dmgMult.Add(10);
+                  result.Add("Super shot!");
+                  Console.WriteLine("Super shot! By card #{0}", i);              
                   driver.GetScreenshot().SaveAsFile(GetLogFileName("urfin_", "jpg", "UrfinSuperShot"), ImageFormat.Jpeg);
+                  if (i == 0) cards[1].Click();
+                  if (i == 1) cards[3].Click();
+                  if (i == 2) cards[5].Click();
+                  superAttack = true;                  
                   break;
                 }
             }
           }
 
+          if (superAttack)
+            continue;
+
           attackEffect[0] = cardsEffect[1] * dmgMult[0] - cardsEffect[0] * (2 - dmgMult[0]);
           attackEffect[1] = cardsEffect[3] * dmgMult[1] - cardsEffect[2] * (2 - dmgMult[1]);
           attackEffect[2] = cardsEffect[5] * dmgMult[2] - cardsEffect[4] * (2 - dmgMult[2]);
-          //Console.WriteLine(string.Format("[{0}] Множители по картам {1}, {2}, {3}", DateTime.Now, dmgMult[0], dmgMult[1], dmgMult[2]));
 
-          if ((attackEffect[0] >= attackEffect[1]) && (attackEffect[0] >= attackEffect[2]))
+          damageEffect[0] = -cardsEffect[0] * (2 - dmgMult[0]);
+          damageEffect[1] = -cardsEffect[2] * (2 - dmgMult[1]);
+          damageEffect[2] = -cardsEffect[4] * (2 - dmgMult[2]);
+
+          var currentHealth = 0.0;
+          const int loginLength = 7;
+          var healthElem = driver.FindElementsByClassName("mlr5");
+          if (healthElem.Count < 2)
+            throw new Exception("No healthElem elements found");
+          var healthStr = healthElem[1].Text.Substring(loginLength);
+          if (healthStr.EndsWith("K"))
+            currentHealth = Convert.ToDouble(healthStr.TrimEnd('K')) * 1000;
+          else
+            currentHealth = Convert.ToDouble(healthStr);
+
+          #region Do chnage cards
+          if (changeCards && currentHealth > 13000)
           {
-            result.Add(string.Format("Beat on {0}", attackEffect[0]));
-            Console.WriteLine(string.Format("[{0}] beat by card #1 on {1} against {2}. Effect {3}", DateTime.Now, cardsEffect[1] * dmgMult[0], cardsEffect[0] * (2 - dmgMult[0]), attackEffect[0]));
-            cards[1].Click();
+            if ((dmgMult[0] == 0.5) && (dmgMult[1] == 0.5) && (dmgMult[2] == 0.5))
+            {
+              var chnageButton = driver.FindElementsByClassName("be");
+              if (chnageButton.Count > 1)
+                if (chnageButton[1].Text.StartsWith("Сменить карты за "))
+                {
+                  result.Add(string.Format("Change cards because they are {0} == {1} == {2}", dmgMult[0], dmgMult[1],dmgMult[2]));
+                  Console.WriteLine(string.Format("[{0}] Change cards because they are {3} == {1} == {2}", DateTime.Now, dmgMult[0], dmgMult[1], dmgMult[2]));              
+                  chnageButton[1].Click();
+                  continue;
+                }
+            }
           }
-          else if ((attackEffect[1] >= attackEffect[0]) && (attackEffect[1] >= attackEffect[2]))
+
+          #endregion
+
+          bool lastAttack = false;
+          if ((currentHealth + damageEffect[0]) < 0 &&
+            (currentHealth + damageEffect[1]) < 0 &&
+            (currentHealth + damageEffect[2]) < 0)
+            lastAttack = true;
+
+          if (lastAttack)
           {
-            result.Add(string.Format("Beat on {0}", attackEffect[1]));
-            Console.WriteLine(string.Format("[{0}] beat by card #2 on {1} against {2}. Effect {3}", DateTime.Now, cardsEffect[3] * dmgMult[1], cardsEffect[2] * (2 - dmgMult[1]), attackEffect[1]));
-            cards[3].Click();
+            if ((attackEffect[0] >= attackEffect[1]) && (attackEffect[0] >= attackEffect[2]))
+            {
+              result.Add(string.Format("Beat on {0}", attackEffect[0]));
+              Console.WriteLine(string.Format("[{0}] [Make max damage]  beat by card #1 on {1} against {2}. Effect {3}. Damage {4}", DateTime.Now, cardsEffect[1] * dmgMult[0], cardsEffect[0] * (2 - dmgMult[0]), attackEffect[0], damageEffect[0]));
+              cards[1].Click();
+            }
+            else if ((attackEffect[1] >= attackEffect[0]) && (attackEffect[1] >= attackEffect[2]))
+            {
+              result.Add(string.Format("Beat on {0}", attackEffect[1]));
+              Console.WriteLine(string.Format("[{0}] [Make max damage]beat by card #2 on {1} against {2}. Effect {3}. Damage {4}", DateTime.Now, cardsEffect[3] * dmgMult[1], cardsEffect[2] * (2 - dmgMult[1]), attackEffect[1], damageEffect[1]));
+              cards[3].Click();
+            }
+            else
+            {
+              result.Add(string.Format("Beat on {0}", attackEffect[2]));
+              Console.WriteLine(string.Format("[{0}] [Make max damage]beat by card #3 on {1} against {2}. Effect {3}. Damage {4}", DateTime.Now, cardsEffect[5] * dmgMult[2], cardsEffect[4] * (2 - dmgMult[2]), attackEffect[2], damageEffect[2]));
+              cards[5].Click();
+            }
           }
           else
           {
-            result.Add(string.Format("Beat on {0}", attackEffect[2]));
-            Console.WriteLine(string.Format("[{0}] beat by card #3 on {1} against {2}. Effect {3}", DateTime.Now, cardsEffect[5] * dmgMult[2], cardsEffect[4] * (2 - dmgMult[2]), attackEffect[2]));
-            cards[5].Click();
+            if ((damageEffect[0] >= damageEffect[1]) && (damageEffect[0] >= damageEffect[2]))
+            {
+              result.Add(string.Format("Beat on {0}", attackEffect[0]));
+              Console.WriteLine(string.Format("[{0}] [Get min damage] beat by card #1 on {1} against {2}. Effect {3}. Damage {4}", DateTime.Now, cardsEffect[1] * dmgMult[0], cardsEffect[0] * (2 - dmgMult[0]), attackEffect[0], damageEffect[0]));
+              cards[1].Click();
+            }
+            else if ((damageEffect[1] >= damageEffect[0]) && (damageEffect[1] >= damageEffect[2]))
+            {
+              result.Add(string.Format("Beat on {0}", attackEffect[1]));
+              Console.WriteLine(string.Format("[{0}] [Get min damage] beat by card #2 on {1} against {2}. Effect {3}. Damage {4}", DateTime.Now, cardsEffect[3] * dmgMult[1], cardsEffect[2] * (2 - dmgMult[1]), attackEffect[1], damageEffect[1]));
+              cards[3].Click();
+            }
+            else
+            {
+              result.Add(string.Format("Beat on {0}", attackEffect[2]));
+              Console.WriteLine(string.Format("[{0}] [Get min damage] beat by card #3 on {1} against {2}. Effect {3}. Damage {4}", DateTime.Now, cardsEffect[5] * dmgMult[2], cardsEffect[4] * (2 - dmgMult[2]), attackEffect[2], damageEffect[2]));
+              cards[5].Click();
+            }
           }
         }
 
@@ -507,7 +593,7 @@ namespace ElemClicker
                 else if (resetButton.First().Text == "Забрать награду")
                   resetButton.First().Click();
                 else
-                return "WIN";
+                  return "WIN";
               }
             else if (cards.Count == 0) //no battle availible at the moment
               return "Boss not ready now";
