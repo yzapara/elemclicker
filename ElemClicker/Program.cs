@@ -14,7 +14,7 @@ namespace ElemClicker
     {
       string login, pwd;
       double coeff;
-      int timeoutMsec, numrRepeats, urfinCost;
+      int timeoutMsec, numrRepeats, urfinCost, maxReasonableDamage;
       bool changeCards;
       if (args.Length < 5)
       {
@@ -37,6 +37,7 @@ namespace ElemClicker
         timeoutMsec = Convert.ToInt32(args[4]);
         urfinCost = Convert.ToInt32(args[5]);
         changeCards = Convert.ToBoolean(Convert.ToInt32(args[6]));
+        maxReasonableDamage = Convert.ToInt32(args[7]);
 
         if (!Directory.Exists(@"Logs"))
           Directory.CreateDirectory("Logs");
@@ -101,14 +102,14 @@ namespace ElemClicker
           pref, DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond, end, subfolder);
     }
 
-    private static void RunUrfin(ChromeDriver driver, bool noCharge, int urfinCost = 10, bool changeCards = false)
+    private static void RunUrfin(ChromeDriver driver, bool noCharge, int urfinCost = 10, bool changeCards = false, int maxReasonableDamage = -2500)
     {
       var results = new List<string>(0) { "Started urfin at " + DateTime.Now };
       Console.WriteLine(string.Format("[{0}] Start urfin", DateTime.Now));
 
       try
       {
-        var beatres = RunUrfinOnce(driver, noCharge, urfinCost, changeCards);
+        var beatres = RunUrfinOnce(driver, noCharge, urfinCost, changeCards, maxReasonableDamage);
         if (beatres.Count == 0)
         {
           results.Add("No availible urfin");
@@ -128,7 +129,7 @@ namespace ElemClicker
       File.WriteAllLines(fileName, results);
     }
 
-    private static List<string> RunUrfinOnce(ChromeDriver driver, bool noCharge, int startFrom = 10, bool changeCards = true)
+    private static List<string> RunUrfinOnce(ChromeDriver driver, bool noCharge, int startFrom = 10, bool changeCards = true, int maxReasonableDamage = -2500)
     {
       driver.Navigate().GoToUrl("http://elem.mobi/urfin/");
 
@@ -287,6 +288,7 @@ namespace ElemClicker
             currentHealth = Convert.ToDouble(healthStr);
 
           #region Do chnage cards
+
           if (changeCards && currentHealth > 13000)
           {
             if ((dmgMult[0] == 0.5) && (dmgMult[1] == 0.5) && (dmgMult[2] == 0.5))
@@ -297,6 +299,18 @@ namespace ElemClicker
                 {
                   result.Add(string.Format("Change cards because they are {0} == {1} == {2}", dmgMult[0], dmgMult[1],dmgMult[2]));
                   Console.WriteLine(string.Format("[{0}] Change cards because they are {3} == {1} == {2}", DateTime.Now, dmgMult[0], dmgMult[1], dmgMult[2]));              
+                  chnageButton[1].Click();
+                  continue;
+                }
+            }
+            else if ((attackEffect[0] < maxReasonableDamage) && (attackEffect[1] < maxReasonableDamage) && (attackEffect[2] < maxReasonableDamage))
+            {
+              var chnageButton = driver.FindElementsByClassName("be");
+              if (chnageButton.Count > 1)
+                if (chnageButton[1].Text.StartsWith("Сменить карты за "))
+                {
+                  result.Add(string.Format("Change cards because urfin beat me on {0}, {1}, {2} that is more than {3}", attackEffect[0], attackEffect[1], attackEffect[2], maxReasonableDamage));
+                  Console.WriteLine(string.Format("[{0}] Change cards because urfin beat me on {1}, {2}, {3} that is more than {4}", DateTime.Now, attackEffect[0], attackEffect[1], attackEffect[2], maxReasonableDamage));
                   chnageButton[1].Click();
                   continue;
                 }
