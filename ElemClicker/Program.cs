@@ -55,6 +55,10 @@ namespace ElemClicker
               BeatBoss(driver, 6);
               BeatBoss(driver, 5);
               BeatBoss(driver, 4);
+              BeatBoss(driver, 3);
+              BeatBoss(driver, 2);
+              BeatBoss(driver, 1);
+              BeatBoss(driver, 0);
 
               RunDuels(driver, coeff);
 
