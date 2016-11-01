@@ -443,7 +443,7 @@ namespace ElemClicker
 
                 for (int i = 0; i < 20; i++)
                 {
-                    Thread.Sleep(200);
+                    Thread.Sleep(1000);
                     var startDuelButton = driver.FindElementsByClassName("be");
                     if (startDuelButton.Count > 0)
                         if (startDuelButton.First().Text == "Напасть")
@@ -478,7 +478,7 @@ namespace ElemClicker
                 #region Run duel
                 for (;;)
                 {
-                    Thread.Sleep(200);
+                    Thread.Sleep(1000);
                     var cards = driver.FindElementsByClassName("card");
                     if (cards.Count < 6)
                     {
